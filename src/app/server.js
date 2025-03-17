@@ -76,7 +76,7 @@ app.use(passport.session());
 
 // CORS setup
 const corsOptions = {
-  origin: ["https://ventoro-frontend.vercel.app", "http://localhost:3000"], // Add both frontend URLs
+  origin: ["https://ventoro-frontend-production.vercel.app", "http://localhost:3000"], // Add both frontend URLs
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true, // Allow credentials
