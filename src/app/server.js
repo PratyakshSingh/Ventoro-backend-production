@@ -4,67 +4,99 @@ const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const session = require("express-session");
 const lusca = require("lusca");
-// const Experience = require('../modules/auth/models/ExperienceModel.js');
-// const Achievement = require('../modules/auth/models/AchievementModel.js');
-
-
-
-const postRoutes=require("../modules/activityFeed/routes/postRoutes.js")
-// Load env vars - move this to top
-dotenv.config({ path: "./.env" });
-
+const http = require("http");
+const { Server } = require("socket.io");
 const { connectToDB } = require("../utils/db.js");
 const routes = require("./routes.js");
+
+dotenv.config({ path: "./.env" });
 const passport = require("passport");
 require("../utils/passportGoogle.js"); 
 
 const port = process.env.PORT || 8000;
-
-connectToDB();
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  },
+});
 
+// Socket.IO connection handling
+io.on("connection", (socket) => {
+  console.log("A user connected:", socket.id);
+
+  socket.on("joinDiscussion", (discussionId) => {
+    socket.join(discussionId);
+    console.log(`User ${socket.id} joined discussion ${discussionId}`);
+  });
+
+  socket.on("leaveDiscussion", (discussionId) => {
+    socket.leave(discussionId);
+    console.log(`User ${socket.id} left discussion ${discussionId}`);
+  });
+
+  socket.on("sendMessage", (data) => {
+    const { discussionId, message, userId } = data;
+    io.to(discussionId).emit("receiveMessage", { userId, message });
+  });
+
+  socket.on("likeComment", (data) => {
+    const { discussionId, commentId, userId } = data;
+    io.to(discussionId).emit("commentLiked", { commentId, userId });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected:", socket.id);
+  });
+});
+
+// Middleware setup
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecretkey",
     resave: false,
     saveUninitialized: true,
     cookie: {
-      secure: process.env.NODE_ENV === "production", // Set true in production (HTTPS required)
+      secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      sameSite: "lax", // Adjust for frontend/backend communication
+      sameSite: "lax", // Adjust as needed
     },
   })
 );
-//app.use(lusca.csrf());
-
-app.set("trust proxy", 1);
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+// CORS setup
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  })
+);
 
+// Routes
 app.use("/api", routes);
 
-
-// app.use(notFound);
-// app.use(errorHandler);
-
+// Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        success: false,
-        message: 'Internal Server Error',
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
 });
 
-app.listen(port, () => console.log(`server running on ${port}`));
+// Start server
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
+
+// Connect to database
+connectToDB();
