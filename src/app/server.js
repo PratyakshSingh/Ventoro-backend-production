@@ -4,8 +4,8 @@ const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const session = require("express-session");
 const lusca = require("lusca");
-const http = require("http");
-const { Server } = require("socket.io");
+// const http = require("http");
+// const { Server } = require("socket.io");
 const { connectToDB } = require("../utils/db.js");
 const routes = require("./routes.js");
 
@@ -15,43 +15,43 @@ require("../utils/passportGoogle.js");
 
 const port = process.env.PORT || 8000;
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  },
-});
+// const server = http.createServer(app);
+// const io = new Server(server, {
+//   cors: {
+//     origin: process.env.FRONTEND_URL || "http://localhost:3000",
+//     methods: ["GET", "POST", "PUT", "DELETE"],
+//     allowedHeaders: ["Content-Type", "Authorization"],
+//   },
+// });
 
 // Socket.IO connection handling
-io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+// io.on("connection", (socket) => {
+//   console.log("A user connected:", socket.id);
 
-  socket.on("joinDiscussion", (discussionId) => {
-    socket.join(discussionId);
-    console.log(`User ${socket.id} joined discussion ${discussionId}`);
-  });
+//   socket.on("joinDiscussion", (discussionId) => {
+//     socket.join(discussionId);
+//     console.log(`User ${socket.id} joined discussion ${discussionId}`);
+//   });
 
-  socket.on("leaveDiscussion", (discussionId) => {
-    socket.leave(discussionId);
-    console.log(`User ${socket.id} left discussion ${discussionId}`);
-  });
+//   socket.on("leaveDiscussion", (discussionId) => {
+//     socket.leave(discussionId);
+//     console.log(`User ${socket.id} left discussion ${discussionId}`);
+//   });
 
-  socket.on("sendMessage", (data) => {
-    const { discussionId, message, userId } = data;
-    io.to(discussionId).emit("receiveMessage", { userId, message });
-  });
+//   socket.on("sendMessage", (data) => {
+//     const { discussionId, message, userId } = data;
+//     io.to(discussionId).emit("receiveMessage", { userId, message });
+//   });
 
-  socket.on("likeComment", (data) => {
-    const { discussionId, commentId, userId } = data;
-    io.to(discussionId).emit("commentLiked", { commentId, userId });
-  });
+//   socket.on("likeComment", (data) => {
+//     const { discussionId, commentId, userId } = data;
+//     io.to(discussionId).emit("commentLiked", { commentId, userId });
+//   });
 
-  socket.on("disconnect", () => {
-    console.log("A user disconnected:", socket.id);
-  });
-});
+//   socket.on("disconnect", () => {
+//     console.log("A user disconnected:", socket.id);
+//   });
+// });
 
 // Middleware setup
 app.use(express.json());
