@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { validateUserCredentials } = require("../../../utils/validations");
 const { ConnectionRequest } = require("../models/ConnectionRequestModel");
 
+const cloudinary = require("cloudinary").v2;
 
 const userData = async (req, res) => {
   try {
@@ -16,7 +17,6 @@ const userData = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
-    console.log("Decoded Token:", decoded); // Log decoded data
 
     const user = await User.findById(decoded.id).select("-password");
     if (!user) {
@@ -521,6 +521,46 @@ const removeConnection = async (req, res, next) => {
 };
 
 
+
+
+const editData = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let updates = { ...req.body };
+
+    // Prevent updating email or password directly
+    delete updates.email;
+    delete updates.password;
+
+  
+    if (req.files?.profileImage) {
+      updates.profileImg = req.files.profileImage[0].path;
+    }
+
+    if (req.files?.coverImage) {
+      updates.coverImg = req.files.coverImage[0].path;
+    }
+  
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   userData,
   loginUser,
@@ -532,5 +572,6 @@ module.exports = {
   acceptConnectionRequest,
   rejectConnectionRequest,
   getPendingRequestsForAUser,
-  removeConnection
+  removeConnection,
+  editData,
 };

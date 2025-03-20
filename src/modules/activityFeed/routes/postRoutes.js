@@ -3,6 +3,8 @@ const postController = require("../controllers/postController");
 const { isAuthenticated } = require("../../../middlewares/auth");
 const upload = require("../../../utils/multer");
 const router = express.Router();
+// const Experience = require('../models/Experience');
+// const Achievement = require('../models/Achievement');
 
 router
   .route("/post/createPost")
@@ -28,6 +30,9 @@ router
 router
   .route("/post/:postId/like")
   .post(isAuthenticated, postController.likePost);
+router
+  .route("/post/:postId/bookmark")
+  .post(isAuthenticated, postController.bookmarkPost);
 
 router
   .route("/post/:postId/comments/:commentId")

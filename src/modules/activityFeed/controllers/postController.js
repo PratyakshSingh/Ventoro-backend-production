@@ -1,14 +1,13 @@
 const { Post } = require("../models/postModel");
 const { User } = require("../../auth/models/userModel");
 const { Comment } = require("../models/commentModel");
-const cloudinary = require("../../../utils/cloudinary");
+const cloudinary = require("../../../utils/uploadConfig");
 const {
   extractHashtags,
   updateTrendingTopics,
   handlePostDeletion,
   handlePostUpdate,
 } = require("../../../utils/trendingTopicsHelper");
-
 /*
 Route to create a post along with file upload if any.
 */
@@ -17,8 +16,8 @@ const createPost = async (req, res) => {
     const author = req.user?.id; // Ensure req.user exists
     if (!author) {
       return res
-          .status(401)
-          .json({ success: false, message: "Unauthorized. Please log in." });
+        .status(401)
+        .json({ success: false, message: "Unauthorized. Please log in." });
     }
 
     const { content } = req.body;
@@ -28,8 +27,8 @@ const createPost = async (req, res) => {
 
     if (!user) {
       return res
-          .status(404)
-          .json({ success: false, message: "User Not Found. Login Again!" });
+        .status(404)
+        .json({ success: false, message: "User Not Found. Login Again!" });
     }
 
     // Upload media to Cloudinary
@@ -96,7 +95,7 @@ const fetchAllPost = async (req, res, next) => {
     // Fetch posts and populate comments
     const posts = await Post.find({ author: { $ne: userId } })
       .populate("author", "name title profileImg userType createdAt updatedAt")
-      .populate("likes", "name title profileImg userType likedAt")
+      // .populate("likes", "name title profileImg userType likedAt")
       .populate({
         path: "comments",
         select: "user comment createdAt",
@@ -116,9 +115,9 @@ const fetchAllPost = async (req, res, next) => {
 
         // Count total replies within comments
         const totalReplies = await Comment.aggregate([
-          { $match: { postId: post._id } }, 
-          { $project: { replyCount: { $size: "$replies" } } }, 
-          { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } }, 
+          { $match: { postId: post._id } },
+          { $project: { replyCount: { $size: "$replies" } } },
+          { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } },
         ]);
 
         // Extract reply count (handle case where there are no replies)
@@ -127,7 +126,7 @@ const fetchAllPost = async (req, res, next) => {
 
         return {
           ...post.toObject(),
-          totalComments: totalComments + replyCount, 
+          totalComments: totalComments + replyCount,
         };
       })
     );
@@ -154,7 +153,7 @@ const fetchPostById = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate("author", "name title profileImg userType createdAt updatedAt")
-      .populate("likes", "name title profileImg userType likedAt")
+      // .populate("likes", "name title profileImg userType likedAt")
       .populate({
         path: "comments",
         select: "user comment createdAt replies",
@@ -170,9 +169,9 @@ const fetchPostById = async (req, res, next) => {
     const totalComments = await Comment.countDocuments({ postId: post._id });
 
     const totalReplies = await Comment.aggregate([
-      { $match: { postId: post._id } }, 
-      { $project: { replyCount: { $size: "$replies" } } }, 
-      { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } }, 
+      { $match: { postId: post._id } },
+      { $project: { replyCount: { $size: "$replies" } } },
+      { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } },
     ]);
 
     const replyCount =
@@ -181,15 +180,13 @@ const fetchPostById = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       message: "Post retrieval Success",
-      post: { ...post.toObject(), totalComments: totalComments + replyCount }, 
+      post: { ...post.toObject(), totalComments: totalComments + replyCount },
     });
   } catch (error) {
     console.error("Error fetching post:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
-
-
 
 /*
 Route to update a user post for a provided post id.
@@ -620,6 +617,58 @@ const likePost = async (req, res, next) => {
   }
 };
 
+const bookmarkPost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.id; // Ensure userId is valid
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    // Verify post exists
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    // Convert userId to string
+    const userIdStr = userId.toString();
+
+    // Check if user already bookmarked the post
+    if (post.bookmarkUser.includes(userIdStr)) {
+      post.bookmarkUser = post.bookmarkUser.filter((id) => id.toString() !== userIdStr);
+      await post.save();
+      return res.status(200).json({
+        success: true,
+        message: "Bookmark removed",
+        bookmarkUser: post.bookmarkUser,
+      });
+    }
+
+    // Add bookmark
+    post.bookmarkUser.push(userIdStr);
+    await post.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Bookmarked successfully",
+      bookmarkUser: post.bookmarkUser,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 /**
  * Comment Interaction Controller
  */
@@ -761,6 +810,7 @@ module.exports = {
   getPostComments,
   updatePostById,
   likePost,
+  bookmarkPost,
   likeComment,
   addReplyToComment,
 };

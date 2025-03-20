@@ -14,6 +14,7 @@ const PostSchema = new mongoose.Schema(
     shares: { type: Number, default: 0 },
     totalComments: { type: Number, default: 0 },
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }], // Reference to Comment model
+    bookmarkUser: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true }
 );

@@ -4,7 +4,6 @@ const { isAuthenticated } = require("../../../middlewares/auth");
 
 const router = express.Router();
 
-console.log("investorRoutes");
 // Protected routes
 router.use(isAuthenticated); // Apply authentication to all routes below
 // Create investor profile
