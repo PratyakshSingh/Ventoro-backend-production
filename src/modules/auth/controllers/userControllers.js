@@ -243,7 +243,16 @@ const googleOAuthCallback = async (req, res, next) => {
 //SEND CONNECTION REQUEST
 const sendConnectionRequest = async (req, res, next) => {
   try{
-    const {senderId, receiverId} = req.body;
+    const { senderId, receiverId } = req.body;
+
+    // Validate senderId and receiverId
+    if (typeof senderId !== "string" || typeof receiverId !== "string") {
+      return res.status(400).json({ message: 'Invalid ID format' });
+    }
+    const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdPattern.test(senderId) || !objectIdPattern.test(receiverId)) {
+      return res.status(400).json({ message: 'Invalid ID format' });
+    }
 
     if (!senderId || !receiverId) {
       return res.status(400).json({ message: 'Sender ID and Receiver ID are required' });
@@ -258,8 +267,8 @@ const sendConnectionRequest = async (req, res, next) => {
     }
 
     // Check if users exist
-    const sender = await User.findById(senderId);
-    const receiver = await User.findById(receiverId);
+    const sender = await User.findById({ _id: { $eq: senderId } });
+    const receiver = await User.findById({ _id: { $eq: receiverId } });
     if (!sender || !receiver) {
       return res.status(404).json({ message: 'User not found' });
     }
