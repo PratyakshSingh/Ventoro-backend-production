@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Chat = require("../models/chatModel");
 const Message = require("../models/messageModel");
 const {User} = require("../../auth/models/userModel");
@@ -21,6 +22,14 @@ const sendMessage = async (req, res, next) => {
             success: false,
             message: "Media URL is required for non-text messages."
         });
+
+        // Validate chatId
+        if (!mongoose.Types.ObjectId.isValid(chatId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Chat ID."
+            });
+        }
 
         // Check if chat exists
         const chat = await Chat.findById(chatId);
