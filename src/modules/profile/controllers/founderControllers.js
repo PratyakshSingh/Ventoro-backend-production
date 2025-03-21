@@ -414,11 +414,8 @@ const uploadProductDemos = async (req, res) => {
 
 const uploadMultimedia = async (req, res) => {
   try {
-    console.log('User ID:', req.user._id);
-    console.log('Founder ID:', req.params.id);
     
     const founder = await Founder.findById(req.params.id);
-    console.log('Found founder:', founder);
     
     if (!founder) {
       return res.status(404).json({

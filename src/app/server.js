@@ -4,10 +4,7 @@ const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const session = require("express-session");
 const lusca = require("lusca");
-// const Experience = require('../modules/auth/models/ExperienceModel.js');
-// const Achievement = require('../modules/auth/models/AchievementModel.js');
-
-
+dotenv.config();
 
 const postRoutes=require("../modules/activityFeed/routes/postRoutes.js")
 // Load env vars - move this to top
@@ -16,7 +13,8 @@ dotenv.config({ path: "./.env" });
 const { connectToDB } = require("../utils/db.js");
 const routes = require("./routes.js");
 const passport = require("passport");
-require("../utils/passportGoogle.js"); 
+const { getShortenUrl } = require("../modules/urlShortner/controllers/urlShortnerController.js");
+require("../utils/passportGoogle.js");
 
 const port = process.env.PORT || 8000;
 
@@ -35,7 +33,7 @@ app.use(
     },
   })
 );
-//app.use(lusca.csrf());
+// app.use(lusca.csrf());
 
 app.use(passport.initialize());
 app.use(passport.session());
@@ -50,7 +48,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
+app.get("/:shortId", getShortenUrl);
 app.use("/api", routes);
 
 

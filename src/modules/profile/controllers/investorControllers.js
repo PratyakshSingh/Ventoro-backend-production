@@ -5,7 +5,6 @@ const { User } = require("../../auth/models/userModel");
 const { validateInvestorProfile } = require("../../../utils/validations");
 
 const registerInvestor = async (req, res) => {
-  console.log("registerInvestor");
   try {
     const validation = validateInvestorProfile(req.body);
     if (!validation.isValid) {
