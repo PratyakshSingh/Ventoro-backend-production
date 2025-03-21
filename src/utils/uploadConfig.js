@@ -25,7 +25,6 @@ const storage = new CloudinaryStorage({
 
 // File filter function to validate file types
 const fileFilter = (req, file, cb) => {
-  // console.log(`Fieldname: ${file.fieldname}, MIME Type: ${file.mimetype}`); // Debugging
 
   // Allow only specific fields and file types
   if (file.fieldname === 'pitchDeck') {

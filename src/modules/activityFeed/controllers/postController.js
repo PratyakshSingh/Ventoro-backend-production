@@ -2,7 +2,12 @@ const { Post } = require("../models/postModel");
 const { User } = require("../../auth/models/userModel");
 const { Comment } = require("../models/commentModel");
 const cloudinary = require("../../../utils/uploadConfig");
-const { extractHashtags, updateTrendingTopics, handlePostDeletion, handlePostUpdate} = require("../../../utils/trendingTopicsHelper");
+const {
+  extractHashtags,
+  updateTrendingTopics,
+  handlePostDeletion,
+  handlePostUpdate,
+} = require("../../../utils/trendingTopicsHelper");
 /*
 Route to create a post along with file upload if any.
 */
@@ -84,25 +89,53 @@ const fetchAllPost = async (req, res, next) => {
     const { page = 1, limit = 10 } = req.query;
     const userId = req.user.id;
 
-    // Fetch all posts except those created by the requesting user
+    // Fetch total posts count
     const totalPosts = await Post.countDocuments({ author: { $ne: userId } });
 
+    // Fetch posts and populate comments
     const posts = await Post.find({ author: { $ne: userId } })
       .populate("author", "name title profileImg userType createdAt updatedAt")
-      .populate("likes", "name title profileImg userType likedAt")
-      .populate(
-        "comments.user",
-        "name title profileImg userType createdAt updatedAt"
-      )
+      // .populate("likes", "name title profileImg userType likedAt")
+      .populate({
+        path: "comments",
+        select: "user comment createdAt",
+        populate: { path: "user", select: "name title profileImg userType" },
+      })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
+    // Fetch total comments for each post in parallel
+    const postsWithComments = await Promise.all(
+      posts.map(async (post) => {
+        // Count direct comments
+        const totalComments = await Comment.countDocuments({
+          postId: post._id,
+        });
+
+        // Count total replies within comments
+        const totalReplies = await Comment.aggregate([
+          { $match: { postId: post._id } },
+          { $project: { replyCount: { $size: "$replies" } } },
+          { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } },
+        ]);
+
+        // Extract reply count (handle case where there are no replies)
+        const replyCount =
+          totalReplies.length > 0 ? totalReplies[0].totalReplies : 0;
+
+        return {
+          ...post.toObject(),
+          totalComments: totalComments + replyCount,
+        };
+      })
+    );
+
     return res.status(200).json({
       success: true,
-      posts,
+      posts: postsWithComments,
       pagination: {
-        currentPage: page,
+        currentPage: Number(page),
         totalPosts,
         totalPages: Math.ceil(totalPosts / limit),
       },
@@ -120,23 +153,37 @@ const fetchPostById = async (req, res, next) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate("author", "name title profileImg userType createdAt updatedAt")
-      .populate("likes", "name title profileImg userType likedAt")
-      .populate(
-        "comments.user",
-        "name title profileImg userType createdAt updatedAt"
-      );
+      // .populate("likes", "name title profileImg userType likedAt")
+      .populate({
+        path: "comments",
+        select: "user comment createdAt replies",
+        populate: { path: "user", select: "name title profileImg userType" },
+      });
+
     if (!post) {
       return res
         .status(404)
         .json({ success: false, message: "Post Not Found" });
     }
 
+    const totalComments = await Comment.countDocuments({ postId: post._id });
+
+    const totalReplies = await Comment.aggregate([
+      { $match: { postId: post._id } },
+      { $project: { replyCount: { $size: "$replies" } } },
+      { $group: { _id: null, totalReplies: { $sum: "$replyCount" } } },
+    ]);
+
+    const replyCount =
+      totalReplies.length > 0 ? totalReplies[0].totalReplies : 0;
+
     return res.status(200).json({
       success: true,
       message: "Post retrieval Success",
-      post: post,
+      post: { ...post.toObject(), totalComments: totalComments + replyCount },
     });
   } catch (error) {
+    console.error("Error fetching post:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
@@ -281,8 +328,8 @@ const commentOnPost = async (req, res, next) => {
     }
 
     // Find the post
-    const post = await Post.findById(postId)
-      
+    const post = await Post.findById(postId);
+
     if (!post)
       return res
         .status(404)
@@ -570,8 +617,57 @@ const likePost = async (req, res, next) => {
   }
 };
 
+const bookmarkPost = async (req, res, next) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user?.id; // Ensure userId is valid
 
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
 
+    // Verify post exists
+    const post = await Post.findById(postId);
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    // Convert userId to string
+    const userIdStr = userId.toString();
+
+    // Check if user already bookmarked the post
+    if (post.bookmarkUser.includes(userIdStr)) {
+      post.bookmarkUser = post.bookmarkUser.filter((id) => id.toString() !== userIdStr);
+      await post.save();
+      return res.status(200).json({
+        success: true,
+        message: "Bookmark removed",
+        bookmarkUser: post.bookmarkUser,
+      });
+    }
+
+    // Add bookmark
+    post.bookmarkUser.push(userIdStr);
+    await post.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Bookmarked successfully",
+      bookmarkUser: post.bookmarkUser,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 /**
  * Comment Interaction Controller
@@ -714,6 +810,7 @@ module.exports = {
   getPostComments,
   updatePostById,
   likePost,
+  bookmarkPost,
   likeComment,
   addReplyToComment,
 };

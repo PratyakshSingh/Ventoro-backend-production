@@ -1,7 +1,7 @@
 const express = require("express");
 const investorControllers = require("../controllers/investorControllers");
 const { isAuthenticated } = require("../../../middlewares/auth");
-const { upload, cloudinary } = require("../../../middlewares/fileUpload");
+
 const router = express.Router();
 
 // Protected routes

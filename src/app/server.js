@@ -4,14 +4,19 @@ const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const session = require("express-session");
 const lusca = require("lusca");
-// const http = require("http");
-// const { Server } = require("socket.io");
+
+dotenv.config();
+// Load env vars - move this to top
+dotenv.config({ path: "./.env" });
+
+
 const { connectToDB } = require("../utils/db.js");
 const routes = require("./routes.js");
 
 dotenv.config({ path: "./.env" });
 const passport = require("passport");
-require("../utils/passportGoogle.js"); 
+const { getShortenUrl } = require("../modules/urlShortner/controllers/urlShortnerController.js");
+require("../utils/passportGoogle.js");
 
 const port = process.env.PORT || 8000;
 const app = express();
@@ -70,6 +75,8 @@ app.use(
   })
 );
 
+// app.use(lusca.csrf());
+
 app.set("trust proxy", 1);
 app.use(passport.initialize());
 app.use(passport.session());
@@ -85,7 +92,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-// Routes
+app.get("/:shortId", getShortenUrl);
 app.use("/api", routes);
 
 // Error handling middleware

@@ -30,6 +30,9 @@ router
 router
   .route("/post/:postId/like")
   .post(isAuthenticated, postController.likePost);
+router
+  .route("/post/:postId/bookmark")
+  .post(isAuthenticated, postController.bookmarkPost);
 
 router
   .route("/post/:postId/comments/:commentId")
