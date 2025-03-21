@@ -13,7 +13,7 @@ const generateShortURL = async (req, res) => {
     }
 
     // Check if the URL is already in the database
-    const existingURL = await URL.findOne({ redirectURL: url });
+    const existingURL = await URL.findOne({ redirectURL: { $eq: url } });
 
     if (existingURL) {
       return res.status(200).json({
