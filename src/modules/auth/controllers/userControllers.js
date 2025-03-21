@@ -474,7 +474,13 @@ const getPendingRequestsForAUser = async (req, res, next) => {
 
 // Remove a connection
 const removeConnection = async (req, res, next) => {
-  const { userId, connectionId } = req.body;
+  let { userId, connectionId } = req.body;
+  if (typeof userId !== "string" || typeof connectionId !== "string") {
+    return res.status(400).json({
+      success: false,
+      message: 'User ID and Connection ID must be strings'
+    });
+  }
 
   try {
     // Input validation
@@ -486,8 +492,8 @@ const removeConnection = async (req, res, next) => {
     }
 
     // Check if users exist
-    const user = await User.findById(userId);
-    const connection = await User.findById(connectionId);
+    const user = await User.findById({ _id: { $eq: userId } });
+    const connection = await User.findById({ _id: { $eq: connectionId } });
     if (!user || !connection) {
       return res.status(404).json({
         success: false,
