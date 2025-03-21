@@ -323,14 +323,14 @@ const sendConnectionRequest = async (req, res, next) => {
 const acceptConnectionRequest = async (req, res, next) => {
   try{
     const {requestId} = req.body;
-    if(!requestId) {
+    if(!requestId || typeof requestId !== "string") {
       return res.status(400).json({
         success: false,
-        message: "Request does not exist",
+        message: "Invalid request ID",
       })
     }
 
-    const connectionRequest = await ConnectionRequest.findById(requestId);
+    const connectionRequest = await ConnectionRequest.findById({ _id: { $eq: requestId } });
     if (!connectionRequest) {
       return res.status(404).json({
         success: false,
